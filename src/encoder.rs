@@ -1,5 +1,5 @@
 extern crate crc32fast;
-extern crate deflate;
+extern crate flate2;
 
 use std::borrow::Cow;
 use std::error;
@@ -206,7 +206,8 @@ impl<W: Write> Writer<W> {
             let message = format!("wrong data size, expected {} got {}", data_size, data.len());
             return Err(EncodingError::Format(message.into()));
         }
-        let mut zlib = deflate::write::ZlibEncoder::new(Vec::new(), self.info.compression.clone());
+        let mut zlib =
+            flate2::write::ZlibEncoder::new(Vec::new(), self.info.compression.clone().into());
         let filter_method = self.info.filter;
         for line in data.chunks(in_len) {
             current.copy_from_slice(&line);
@@ -335,7 +336,7 @@ impl<'a, W: Write> Drop for ChunkWriter<'a, W> {
 /// This may silently fail in the destructor, so it is a good idea to call
 /// [`finish`](#method.finish) or [`flush`](https://doc.rust-lang.org/stable/std/io/trait.Write.html#tymethod.flush) before dropping.
 pub struct StreamWriter<'a, W: Write> {
-    writer: deflate::write::ZlibEncoder<ChunkWriter<'a, W>>,
+    writer: flate2::write::ZlibEncoder<ChunkWriter<'a, W>>,
     prev_buf: Vec<u8>,
     curr_buf: Vec<u8>,
     index: usize,
@@ -353,7 +354,7 @@ impl<'a, W: Write> StreamWriter<'a, W> {
 
         let compression = writer.as_mut().info.compression.clone();
         let chunk_writer = ChunkWriter::new(writer, buf_len);
-        let zlib = deflate::write::ZlibEncoder::new(chunk_writer, compression);
+        let zlib = flate2::write::ZlibEncoder::new(chunk_writer, compression.into());
 
         StreamWriter {
             writer: zlib,

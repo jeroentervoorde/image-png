@@ -274,6 +274,7 @@ pub struct AnimationControl {
 /// The type and strength of applied compression.
 #[derive(Debug, Clone)]
 pub enum Compression {
+    None,
     /// Default level  
     Default,
     /// Fast minimal compression
@@ -284,8 +285,6 @@ pub enum Compression {
     /// the encoder can do, but is meant to emulate the `Best` setting in the `Flate2`
     /// library.
     Best,
-    Huffman,
-    Rle,
 }
 
 /// PNG info struct
@@ -451,28 +450,33 @@ bitflags! {
 /// Since this only contains trait impls, there is no need to make this public, they are simply
 /// available when the mod is compiled as well.
 #[cfg(feature = "png-encoding")]
-mod deflate_convert {
-    extern crate deflate;
+mod flate2_convert {
+    extern crate flate2;
     use super::Compression;
 
-    impl From<deflate::Compression> for Compression {
-        fn from(c: deflate::Compression) -> Self {
-            match c {
-                deflate::Compression::Default => Compression::Default,
-                deflate::Compression::Fast => Compression::Fast,
-                deflate::Compression::Best => Compression::Best,
+    impl From<flate2::Compression> for Compression {
+        fn from(c: flate2::Compression) -> Self {
+            if c == flate2::Compression::default() {
+                Compression::Default
+            } else if c == flate2::Compression::fast() {
+                Compression::Fast
+            } else if c == flate2::Compression::best() {
+                Compression::Best
+            } else if c == flate2::Compression::none() {
+                Compression::None
+            } else {
+                Compression::Default
             }
         }
     }
 
-    impl From<Compression> for deflate::CompressionOptions {
+    impl From<Compression> for flate2::Compression {
         fn from(c: Compression) -> Self {
             match c {
-                Compression::Default => deflate::CompressionOptions::default(),
-                Compression::Fast => deflate::CompressionOptions::fast(),
-                Compression::Best => deflate::CompressionOptions::high(),
-                Compression::Huffman => deflate::CompressionOptions::huffman_only(),
-                Compression::Rle => deflate::CompressionOptions::rle(),
+                Compression::None => flate2::Compression::none(),
+                Compression::Default => flate2::Compression::default(),
+                Compression::Fast => flate2::Compression::fast(),
+                Compression::Best => flate2::Compression::best(),
             }
         }
     }
